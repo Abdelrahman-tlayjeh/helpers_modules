@@ -1,3 +1,7 @@
+"""
+helpers methods used in the main module (tables_scraper)
+"""
+
 from pandas import read_html, DataFrame
 from urllib.error import HTTPError, URLError
 from selenium import webdriver
@@ -56,7 +60,7 @@ def init_chrome_driver(driver_path:str, show_browser:bool) -> webdriver:
         "images": 2
     }}
 
-    #TODO: handle invalid driver path 
+    #! invalid path will raise an unhandled exception
     return webdriver.Chrome(driver_path, options=options)
 
 
@@ -68,7 +72,6 @@ def get_js_driven_source_code(url:str, driver_path:str, show_browser:bool=False)
         - url: webpage url
         - driver_path: path to the chrome driver (.exe)
         - show_browser [False by default]: True to show the chrome browser, False otherwise.
-
     """
     driver = init_chrome_driver(driver_path, show_browser)
     #get the URL
