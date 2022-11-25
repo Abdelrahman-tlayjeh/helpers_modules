@@ -1,5 +1,5 @@
 """
-helpers methods used in the main module (tables_scraper)
+helpers functions used in the main module (tables_scraper)
 """
 
 from pandas import read_html, DataFrame

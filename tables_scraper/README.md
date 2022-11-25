@@ -11,7 +11,7 @@ if response.succeed and len(response.tables):
     print(response.tables[0].head())
 else:
     print(f"Something went wrong: {response.msg}")
-    
+
 """
 Rank Country / Dependency  Population                        Date Source (official or from the United Nations)                                              Notes
   Rank Country / Dependency     Numbers % of the world         Date Source (official or from the United Nations)                                              Notes
@@ -21,4 +21,17 @@ Rank Country / Dependency  Population                        Date Source (offici
 3    3        United States   336312556            NaN  24 Nov 2022                          Population clock[6]  The figure includes the 50 states and the Dist...
 4    4            Indonesia   275773800            NaN   1 Jul 2022                         Official estimate[7]                                                NaN
 """
+```
+
+```python
+from tables_scraper import TablesScraper
+
+URL = "https://coinmarketcap.com/"
+DRIVER_PATH = r"C:\Users\username\Downloads\chromedriver.exe"
+
+response = TablesScraper.scrape_static_page(URL, DRIVER_PATH)
+if response.succeed and len(response.tables):
+    print(response.tables[0].head())
+else:
+    print(f"Something went wrong: {response.msg}")
 ```
