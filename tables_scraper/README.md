@@ -1,5 +1,5 @@
 # Tables Scraper
-## a helper module to scrapes tables from both static and dynamic web pages
+## a module to scrape tables from both static and dynamic web pages
 
 ## usage:
 
@@ -22,6 +22,7 @@ Rank Country / Dependency  Population                        Date Source (offici
 4    4            Indonesia   275773800            NaN   1 Jul 2022                         Official estimate[7]                                                NaN
 """
 ```
+<hr>
 
 ```python
 from tables_scraper import TablesScraper
@@ -29,7 +30,7 @@ from tables_scraper import TablesScraper
 URL = "https://coinmarketcap.com/"
 DRIVER_PATH = r"C:\Users\username\Downloads\chromedriver.exe"
 
-response = TablesScraper.scrape_static_page(URL, DRIVER_PATH)
+response = TablesScraper.scrape_dynamic_page(URL, DRIVER_PATH)
 if response.succeed and len(response.tables):
     print(response.tables[0].head())
 else:
