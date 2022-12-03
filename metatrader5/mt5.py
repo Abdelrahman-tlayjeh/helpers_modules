@@ -21,6 +21,7 @@ class Mt5:
             password : MetaTrader5 login password
             pair_extension (optional) : in case that pairs are not the default (e.g: "EURUSDm#" for micro accounts, the extension is "m#"). default is empty string
             filling_type (optional) : the filling type, can be "IOC", "FOK", or "RETURN", depending on used broker, default is "IOC"
+            acceptable_change_in_price (optional) : the acceptable change in entry price at the moment of executing the trade (in pip), default is 10
         """
         #connections config
         self._SERVER = server
@@ -138,6 +139,26 @@ class Mt5:
             return {"sell": info["bid"], "buy": info["ask"]}
 
         
+    #========== helpers ==========#
+    def _calc_pips(self, price1:float, price2:float) -> int:
+        """calculate the difference between two prices in pips"""
+        #JPY pairs
+        if str(price1).index(".") >= 2:
+            vp = 0.01
+        #all other forex pairs
+        else:
+            vp = 0.0001
+        
+        return int(round(abs(price1 - price2) / vp))
+
+
+    def _is_entry_price_valid(self, pair:str, entry_price:float, action:str, acceptable_change_in_price:int) -> bool:
+        """
+        check if entry_price is valid (the difference between entry_price and the current price is less than or equal acceptable_change_in_price)
+        """
+        return self._calc_pips(entry_price, self.get_current_pair_price(pair)["buy" if action == "BUY" else "sell"]) <= acceptable_change_in_price
+            
+
     #========== open trade ==========#
     def open_trade(
         self, 
@@ -148,40 +169,51 @@ class Mt5:
         sl:float,
         tp:float,
         magic:int=1000,
-        note:str=""
+        note:str="",
+        acceptable_change_in_price:int=10
     ) -> mt.OrderSendResult:
-    #TODO: handle inaccurate entry price
         """
         execute the trade, it will return MetaTrader5.OrderSendResult object if trade is successfully opened,
         otherwise, it will raise an Exception
 
         Args:
-        pair : e.g "EURUSD"
-        type : "BUY" or "SELL"
-        volume : the lot size
-        entry : the entry price
-        sl: the stop loss
-        tp: the take profit
-        magic (optional) : the magic number, default is 1000
-        note (optional) : a note, default is empty string
+            pair : e.g "EURUSD"
+            type : "BUY" or "SELL"
+            volume : the lot size
+            entry : the entry price
+            sl: the stop loss
+            tp: the take profit
+            magic (optional) : the magic number, default is 1000
+            note (optional) : a note, default is empty string
+            acceptable_change_in_price (optional) : the acceptable change in entry price at the moment of executing the trade (in pip), default is 10
         """
-         
-        result = mt.order_send(
-            {
-                "action": mt.TRADE_ACTION_DEAL,
-                "symbol": pair + self._pair_extension,
-                "volume": volume,
-                "type": self._TRADES_TYPES[type],
-                "price": entry,
-                "sl": sl,
-                "tp": tp,
-                "magic": magic,
-                "comment": note,
-                "type_time": mt.ORDER_TIME_GTC,
-                "type_filling": self._TRADES_FILLING_TYPES[self._filling_type]
-            }
-        )
 
+        #check if entry_price is valid
+        if not self._is_entry_price_valid(pair, entry, type, acceptable_change_in_price):
+            raise Exception(f"Entry price is invalid: entry='{entry}'; current price = {self.get_current_pair_price(pair)}")
+        
+        #send order request to terminal
+        try:
+            result = mt.order_send(
+                {
+                    "action": mt.TRADE_ACTION_DEAL,
+                    "symbol": pair + self._pair_extension,
+                    "volume": volume,
+                    "type": self._TRADES_TYPES[type],
+                    "price": entry,
+                    "sl": sl,
+                    "tp": tp,
+                    "magic": magic,
+                    "comment": note,
+                    "type_time": mt.ORDER_TIME_GTC,
+                    "type_filling": self._TRADES_FILLING_TYPES[self._filling_type]
+                }
+            )
+        #--- Trade is not executed ---#
+        except Exception as e:
+            raise Exception(f"Unexpected error occur when trying to open the trade: {e}")
+
+        #--- Trade is executed without exception ---#
         #if the return is None
         if result is None:
             raise Exception(f"Failed to open Trade (returns None): {self.last_error}")
@@ -197,6 +229,5 @@ class Mt5:
         #invalid stops (TP|SL)
         if result.retcode == 10016:
             raise Exception(f"Failed to open trade due to invalid stops!")
-
-        #unknown reason
-        raise Exception(f"Failed to open Trade: retcode={result.retcode} [{result.comment}]")
+        #other errors
+        raise Exception(f"MT5 reject the trade: retcode={result.retcode} [{result.comment}]")
