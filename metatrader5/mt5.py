@@ -1,19 +1,20 @@
 import MetaTrader5 as mt
 
+
 class Mt5:
-    #trades types (actions)
+    # trades types (actions)
     _TRADES_TYPES = {
         "BUY": mt.ORDER_TYPE_BUY,
         "SELL": mt.ORDER_TYPE_SELL
     }
-    #filling types
+    # filling types
     _TRADES_FILLING_TYPES = {
         "IOC": mt.ORDER_FILLING_IOC,
         "FOK": mt.ORDER_FILLING_FOK,
         "RETURN": mt.ORDER_FILLING_RETURN
     }
 
-    def __init__(self, server:str, login:int, password:str, pair_extension:str="", filling_type:str="IOC") -> None:
+    def __init__(self, server: str, login: int, password: str, pair_extension: str = "", filling_type: str = "IOC") -> None:
         """
         Args:
             server : broker server
@@ -23,11 +24,11 @@ class Mt5:
             filling_type (optional) : the filling type, can be "IOC", "FOK", or "RETURN", depending on used broker, default is "IOC"
             acceptable_change_in_price (optional) : the acceptable change in entry price at the moment of executing the trade (in pip), default is 10
         """
-        #connections config
+        # connections config
         self._SERVER = server
         self._LOGIN_ID = login
         self._PASSWORD = password
-        #other config
+        # other config
         self._pair_extension = pair_extension
         self._filling_type = filling_type
 
@@ -37,26 +38,27 @@ class Mt5:
     def __str__(self) -> str:
         return f"Mt5(login: '{self._LOGIN_ID}', server: '{self._SERVER}')"
 
-    
     #========== connect/disconnect ==========#
+
     def connect(self) -> None:
         """
         start a connection with MT5 terminal, will raise an Exception in case of any error
         """
         mt.initialize()
         if not mt.login(login=self._LOGIN_ID, server=self._SERVER, password=self._PASSWORD, timeout=60_000):
-            raise Exception("Failed to connect with MT5 terminal!")
+            raise Exception(
+                f"Failed to connect with MT5 terminal: {self.last_error}")
 
     def disconnect(self) -> None:
         """perform MetaTrader5.shutdown()"""
         mt.shutdown()
 
-
     #========== account info properties ==========#
+
     def _get_info(self):
         """return MetaTrader5.account_info()"""
         return mt.account_info()
-        
+
     @property
     def account_info(self) -> dict:
         """all account information"""
@@ -71,12 +73,12 @@ class Mt5:
     def account_balance(self) -> float:
         """current account balance"""
         return self._get_info().balance
-    
+
     @property
     def account_equity(self) -> float:
         """current account equity"""
         return self._get_info().equity
-    
+
     @property
     def account_profit(self) -> float:
         """current account profit"""
@@ -85,7 +87,7 @@ class Mt5:
     @property
     def account_margins(self) -> dict:
         """account margin levels
-        
+
         returns:
              dict like -> {
                 "used": float
@@ -111,24 +113,22 @@ class Mt5:
         """last MetaTrader5 error"""
         return mt.last_error()
 
-
     #========== pairs info ==========#
-    def _get_pair_info(self, pair:str) -> dict:
+    def _get_pair_info(self, pair: str) -> dict:
         """
         return all pair info, 
         it will raise an Exception if the pair is invalid or any unexpected error occur
         """
         if info := mt.symbol_info(pair):
             return info._asdict()
-        #failed
+        # failed
         raise Exception(f"failed to find '{pair}': {self.last_error}")
 
-
-    def get_current_pair_price(self, pair:str) -> dict:
+    def get_current_pair_price(self, pair: str) -> dict:
         """
         return current [buy] and [sell] prices of pair,
         it will raise an Exception if the pair is invalid or any unexpected error occur
-        
+
         returns:
         dict like -> {
             "sell": float
@@ -138,39 +138,37 @@ class Mt5:
         if info := self._get_pair_info(pair):
             return {"sell": info["bid"], "buy": info["ask"]}
 
-        
     #========== helpers ==========#
-    def _calc_pips(self, price1:float, price2:float) -> int:
+    def _calc_pips(self, price1: float, price2: float) -> int:
         """calculate the difference between two prices in pips"""
-        #JPY pairs
+        # JPY pairs
         if str(price1).index(".") >= 2:
             vp = 0.01
-        #all other forex pairs
+        # all other forex pairs
         else:
             vp = 0.0001
-        
+
         return int(round(abs(price1 - price2) / vp))
 
-
-    def _is_entry_price_valid(self, pair:str, entry_price:float, action:str, acceptable_change_in_price:int) -> bool:
+    def _is_entry_price_valid(self, pair: str, entry_price: float, action: str, acceptable_change_in_price: int) -> bool:
         """
         check if entry_price is valid (the difference between entry_price and the current price is less than or equal acceptable_change_in_price)
         """
         return self._calc_pips(entry_price, self.get_current_pair_price(pair)["buy" if action == "BUY" else "sell"]) <= acceptable_change_in_price
-            
 
     #========== open trade ==========#
+
     def open_trade(
-        self, 
-        pair:str,
-        type:str,   #'BUY'|'SELL'
-        volume:float,
-        entry:float,
-        sl:float,
-        tp:float,
-        magic:int=1000,
-        note:str="",
-        acceptable_change_in_price:int=10
+        self,
+        pair: str,
+        type: str,  # 'BUY'|'SELL'
+        volume: float,
+        entry: float,
+        sl: float,
+        tp: float,
+        magic: int = 1000,
+        note: str = "",
+        acceptable_change_in_price: int = 10
     ) -> mt.OrderSendResult:
         """
         execute the trade, it will return MetaTrader5.OrderSendResult object if trade is successfully opened,
@@ -188,18 +186,19 @@ class Mt5:
             acceptable_change_in_price (optional) : the acceptable change in entry price at the moment of executing the trade (in pip), default is 10
         """
 
-        #check if entry_price is valid
+        # check if entry_price is valid
         if not self._is_entry_price_valid(pair, entry, type, acceptable_change_in_price):
-            raise Exception(f"Entry price is invalid: entry='{entry}'; current price = {self.get_current_pair_price(pair)}")
-        
-        #send order request to terminal
+            raise Exception(
+                f"Entry price is invalid: entry='{entry}'; current price = {self.get_current_pair_price(pair)}")
+
+        # send order request to terminal
         try:
             result = mt.order_send(
                 {
                     "action": mt.TRADE_ACTION_DEAL,
-                    "symbol": pair + self._pair_extension,
+                    "symbol": pair.capitalize() + self._pair_extension,
                     "volume": volume,
-                    "type": self._TRADES_TYPES[type],
+                    "type": self._TRADES_TYPES[type.capitalize()],
                     "price": entry,
                     "sl": sl,
                     "tp": tp,
@@ -211,23 +210,27 @@ class Mt5:
             )
         #--- Trade is not executed ---#
         except Exception as e:
-            raise Exception(f"Unexpected error occur when trying to open the trade: {e}")
+            raise Exception(
+                f"Unexpected error occur when trying to open the trade: {e}")
 
         #--- Trade is executed without exception ---#
-        #if the return is None
+        # if the return is None
         if result is None:
-            raise Exception(f"Failed to open Trade (returns None): {self.last_error}")
-        
-        #if succeed
+            raise Exception(
+                f"Failed to open Trade (returns None): {self.last_error}")
+
+        # if succeed
         if result.retcode == self.SUCCESSFULLY_OPEN:
             return result
 
         #not succeed
-        #if auto trading option is disabled
+        # if auto trading option is disabled
         if result.retcode == 10027:
-            raise Exception(f"Failed to open trade because AutoTrading is disabled!")
-        #invalid stops (TP|SL)
+            raise Exception(
+                f"Failed to open trade because AutoTrading is disabled!")
+        # invalid stops (TP|SL)
         if result.retcode == 10016:
             raise Exception(f"Failed to open trade due to invalid stops!")
-        #other errors
-        raise Exception(f"MT5 reject the trade: retcode={result.retcode} [{result.comment}]")
+        # other errors
+        raise Exception(
+            f"MT5 reject the trade: retcode={result.retcode} [{result.comment}]")
