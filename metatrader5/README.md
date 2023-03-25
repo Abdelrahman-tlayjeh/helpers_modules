@@ -1,14 +1,15 @@
-#  Metatrader5 automating helper 
- A helper class built for a simple automated-trading system to facilitate basic operations with the MetaTrader5 API, to use it, MetaTrader5 should be installed and the "Algo Trading" option should be enabled
+# Metatrader5 automating helper
 
+A helper class built for a simple automated-trading system to facilitate basic operations with the MetaTrader5 API, to use it, MetaTrader5 should be installed and the "Algo Trading" option should be enabled
 
 ## Usage example:
 
 ### - init connection with MT5 terminal
+
 ```python
 from mt5 import Mt5
 
-server:str = "broker-server" 
+server:str = "broker-server"
 login:int = "login-id"
 password:str = "login-password"
 
@@ -24,11 +25,14 @@ except Exception as e:
 ```
 
 ### - Show all account information
+
 ```python
 for prop, value in mt.account_info.items():
     print(f"{prop}: {value}")
 ```
+
 ### - Open a trade
+
 ```python
 try:
     order_result = mt.open_trade(
@@ -45,7 +49,23 @@ try:
     print("Trade is successfully executed:")
     for prop, value in order_result._asdict().items():
         print(f"{prop}: {value}")
-        
+
 except Exception as e:
     print(f"Failed! {e}")
+```
+
+### - Get Trades Results
+
+```python
+opened_trades_tickets = [
+    292250619,
+    292233423,
+    292191275,
+]
+
+for ticket in opened_trades_tickets:
+    if(result := mt.get_trade_result(ticket)):
+        print(f"Profit Of Trade with ticket = {ticket}: {result['profit']}")
+        continue
+    print(f"Trade with ticket = {ticket} is not yet closed")
 ```
